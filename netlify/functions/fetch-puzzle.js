@@ -1,36 +1,16 @@
 exports.handler = async function(event, context) {
   const source = event.queryStringParameters?.source || 'wsj';
+  const dateParam = event.queryStringParameters?.date; // YYMMDD format, optional
 
-  const now = new Date();
-  const yy = String(now.getFullYear()).slice(2);
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  const dateStr = `${yy}${mm}${dd}`;
-
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yy2 = String(yesterday.getFullYear()).slice(2);
-  const mm2 = String(yesterday.getMonth() + 1).padStart(2, '0');
-  const dd2 = String(yesterday.getDate()).padStart(2, '0');
-  const dateStr2 = `${yy2}${mm2}${dd2}`;
-
-  const sources = {
-    wsj: [
-      `https://herbach.dnsalias.com/wsj/wsj${dateStr}.puz`,
-      `https://herbach.dnsalias.com/wsj/wsj${dateStr2}.puz`,
-    ],
-    universal: [
-      `https://herbach.dnsalias.com/Uni/uni${dateStr}.puz`,
-      `https://herbach.dnsalias.com/Uni/uni${dateStr2}.puz`,
-    ],
-    jonesin: [
-      `https://herbach.dnsalias.com/Jonesin/jz${dateStr}.puz`,
-      `https://herbach.dnsalias.com/Jonesin/jz${dateStr2}.puz`,
-    ],
+  // URL patterns per source
+  const patterns = {
+    wsj:       ds => `https://herbach.dnsalias.com/wsj/wsj${ds}.puz`,
+    universal: ds => `https://herbach.dnsalias.com/Uni/uc${ds}.puz`,
+    jonesin:   ds => `https://herbach.dnsalias.com/Jonesin/jz${ds}.puz`,
   };
 
-  const urls = sources[source];
-  if (!urls) {
+  const pattern = patterns[source];
+  if (!pattern) {
     return {
       statusCode: 400,
       headers: { 'Access-Control-Allow-Origin': '*' },
@@ -38,7 +18,26 @@ exports.handler = async function(event, context) {
     };
   }
 
+  // Build list of dates to try
+  let datesToTry = [];
+  if (dateParam) {
+    // Specific date requested — try it and one day either side
+    datesToTry = [dateParam];
+  } else {
+    // No date — try today and past 7 days (catches weekly puzzles)
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const yy = String(d.getFullYear()).slice(2);
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      datesToTry.push(`${yy}${mm}${dd}`);
+    }
+  }
+
+  const urls = datesToTry.map(pattern);
   let lastError = '';
+
   for (const url of urls) {
     try {
       const response = await fetch(url, {
@@ -73,6 +72,6 @@ exports.handler = async function(event, context) {
   return {
     statusCode: 500,
     headers: { 'Access-Control-Allow-Origin': '*' },
-    body: JSON.stringify({ error: 'All sources failed. Last error: ' + lastError }),
+    body: JSON.stringify({ error: 'Puzzle not found for that date. Last error: ' + lastError }),
   };
 };
