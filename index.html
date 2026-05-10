@@ -218,13 +218,16 @@ function parsePuz(u8){
     const dS=(r===0||!sol[r-1]||sol[r-1][c]==='.')&&r+1<h&&sol[r+1]&&sol[r+1][c]!=='.';
     if(aS||dS){numMap[r+','+c]=n;n++;}
   }
-  const midR=Math.floor(h/2),midC=Math.floor(w/2);
+  // 16 quadrants: 4 rows x 4 cols of roughly equal size
+  const qRows=4,qCols=4;
   const quadrantMap={};
   for(let r=0;r<h;r++)for(let c=0;c<w;c++){
     if(sol[r][c]==='.')continue;
-    quadrantMap[r+','+c]=(r<midR?0:2)+(c<midC?0:1);
+    const qr=Math.min(Math.floor(r/(h/qRows)),qRows-1);
+    const qc=Math.min(Math.floor(c/(w/qCols)),qCols-1);
+    quadrantMap[r+','+c]=qr*qCols+qc;
   }
-  G.puzzle={title,author,width:w,height:h,solution:sol,midR,midC};
+  G.puzzle={title,author,width:w,height:h,solution:sol,qRows,qCols};
   G.clues={across:aC,down:dC};
   G.allClueOrder=order;
   G.numMap=numMap;
@@ -523,7 +526,7 @@ function submitAnswer(){
       const k=r+','+c;
       G.solvedCells.add(k);delete G.partialCells[k];delete G.typedCells[k];
       const q=G.quadrantMap[k];
-      if(q!==undefined&&!G.openQuadrants.has(q)){G.openQuadrants.add(q);if(!newlyUnlocked.includes(q))newlyUnlocked.push(q);}
+      if(q!==undefined&&!G.openQuadrants.has(q)&&isAdjacentToOpen(q)){G.openQuadrants.add(q);if(!newlyUnlocked.includes(q))newlyUnlocked.push(q);}
       const el=document.getElementById(`c${r}_${c}`);
       if(el){el.innerHTML='';el.className='cell correct';if(G.numMap[k]){const nm=document.createElement('span');nm.className='cell-num';el.appendChild(nm);}el.appendChild(document.createTextNode(cl.answer[i]));}
     });
@@ -727,6 +730,18 @@ function renderOpenClues(){
       <span class="cr-text">${cl.clue.length>40?cl.clue.slice(0,40)+'…':cl.clue}</span>
     </div>`;
   }).join('');
+}
+
+function isAdjacentToOpen(q){
+  const qCols=G.puzzle.qCols||4;
+  const row=Math.floor(q/qCols),col=q%qCols;
+  const neighbors=[
+    (row-1)*qCols+col, // above
+    (row+1)*qCols+col, // below
+    row*qCols+(col-1), // left
+    row*qCols+(col+1), // right
+  ];
+  return neighbors.some(n=>n>=0&&G.openQuadrants.has(n));
 }
 
 function checkWin(){
