@@ -89,6 +89,9 @@ body{background:#f5f5f0;display:flex;align-items:flex-start;justify-content:cent
 .auto-btn{background:#121212;color:#fff;border:none;padding:10px 20px;font-family:'Libre Franklin',sans-serif;font-size:12px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.8px;border-radius:2px;}
 .auto-btn:hover{background:#333;}
 .auto-btn:disabled{background:#ccc;cursor:default;}
+.src-btn{background:#fff;border:1.5px solid #ccc;color:#767676;padding:8px 0;font-family:'Libre Franklin',sans-serif;font-size:11px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.5px;border-radius:2px;transition:all .15s;}
+.src-btn:hover{border-color:#121212;color:#121212;}
+.src-btn.active{background:#121212;color:#fff;border-color:#121212;}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 </style>
 </head>
@@ -102,23 +105,36 @@ body{background:#f5f5f0;display:flex;align-items:flex-start;justify-content:cent
     </div>
   </div>
   <div id="main-area">
-    <div style="text-align:center;padding:40px 20px;">
-      <div style="font-size:20px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">Across<span style="color:#c00">word</span></div>
-      <div style="font-size:12px;color:#767676;margin-bottom:28px;">A crossword board game for two players</div>
+    <div style="max-width:480px;margin:0 auto;padding:40px 20px;text-align:center;">
+      <div style="font-size:26px;font-weight:700;letter-spacing:3px;text-transform:uppercase;margin-bottom:4px;">Across<span style="color:#c00">word</span></div>
+      <div style="font-size:12px;color:#767676;margin-bottom:32px;letter-spacing:.5px;">A crossword board game for two players</div>
 
-      <div style="margin-bottom:24px;">
-        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#767676;margin-bottom:10px;">Load today's puzzle</div>
-        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
-          <button class="auto-btn" onclick="autoLoad('wsj')">WSJ Daily</button>
-          <button class="auto-btn" onclick="autoLoad('universal')">Universal</button>
-          <button class="auto-btn" onclick="autoLoad('jonesin')">Jonesin'</button>
+      <!-- Source selector -->
+      <div style="margin-bottom:16px;text-align:left;">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#767676;margin-bottom:8px;">Puzzle source</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+          <button class="src-btn active" id="src-wsj" onclick="selectSource('wsj')">WSJ</button>
+          <button class="src-btn" id="src-universal" onclick="selectSource('universal')">Universal</button>
+          <button class="src-btn" id="src-jonesin" onclick="selectSource('jonesin')">Jonesin'</button>
         </div>
-        <div id="load-status" style="font-size:11px;color:#767676;margin-top:10px;min-height:18px;"></div>
+        <div style="font-size:10px;color:#aaa;margin-top:6px;" id="src-note">Published Saturdays · Archive: 2014–today</div>
       </div>
 
-      <div style="border-top:1px solid #e2e2e2;padding-top:20px;">
-        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#767676;margin-bottom:10px;">Or upload a .puz file</div>
-        <div class="drop-zone" id="dz" onclick="document.getElementById('fi').click()" ondragover="dzo(event)" ondragleave="dzl()" ondrop="dzd(event)" style="padding:20px;margin-bottom:0;">
+      <!-- Date selector -->
+      <div style="margin-bottom:16px;text-align:left;">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#767676;margin-bottom:8px;">Date</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px;">
+          <select id="pick-year" onchange="updateDayOptions()" style="padding:8px;border:1.5px solid #ccc;border-radius:2px;font-family:'Libre Franklin',sans-serif;font-size:12px;font-weight:600;"></select>
+          <select id="pick-month" onchange="updateDayOptions()" style="padding:8px;border:1.5px solid #ccc;border-radius:2px;font-family:'Libre Franklin',sans-serif;font-size:12px;font-weight:600;"></select>
+          <select id="pick-day" style="padding:8px;border:1.5px solid #ccc;border-radius:2px;font-family:'Libre Franklin',sans-serif;font-size:12px;font-weight:600;"></select>
+        </div>
+        <button class="auto-btn" style="width:100%" onclick="autoLoadDate()">Load puzzle</button>
+        <div id="load-status" style="font-size:11px;color:#767676;margin-top:8px;min-height:18px;text-align:center;"></div>
+      </div>
+
+      <div style="border-top:1px solid #e2e2e2;padding-top:20px;text-align:left;">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#767676;margin-bottom:8px;">Or upload a .puz file</div>
+        <div class="drop-zone" id="dz" onclick="document.getElementById('fi').click()" ondragover="dzo(event)" ondragleave="dzl()" ondrop="dzd(event)" style="padding:16px;margin-bottom:0;">
           <div style="font-size:12px;color:#767676;">Drop a .puz file here or click to browse</div>
           <input type="file" id="fi" class="file-input" accept=".puz" onchange="loadFile(this.files[0])">
         </div>
@@ -152,24 +168,107 @@ function ck(c){return c.dir+c.num;}
 function getClue(k){if(!k)return null;const dir=k.startsWith('across')?'across':'down';const num=parseInt(k.replace(dir,''));return G.clues[dir][num]||null;}
 function getActive(){return getClue(G.activeKey);}
 
-async function autoLoad(source){
+// Source metadata
+const SOURCES={
+  wsj:{label:'WSJ',note:'Published Saturdays · Archive: 2014–today',startYear:2014},
+  universal:{label:'Universal',note:'Published daily · Archive: 2019–today',startYear:2019},
+  jonesin:{label:"Jonesin'",note:'Published Thursdays · Archive: 2014–today',startYear:2014},
+};
+let currentSource='wsj';
+
+function selectSource(src){
+  currentSource=src;
+  document.querySelectorAll('.src-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('src-'+src).classList.add('active');
+  document.getElementById('src-note').textContent=SOURCES[src].note;
+  populateYears();
+}
+
+function populateYears(){
+  const yearSel=document.getElementById('pick-year');
+  if(!yearSel)return;
+  const now=new Date();
+  const startYear=SOURCES[currentSource].startYear;
+  yearSel.innerHTML='';
+  for(let y=now.getFullYear();y>=startYear;y--){
+    const o=document.createElement('option');
+    o.value=y;o.textContent=y;
+    yearSel.appendChild(o);
+  }
+  populateMonths();
+}
+
+function populateMonths(){
+  const monthSel=document.getElementById('pick-month');
+  if(!monthSel)return;
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const now=new Date();
+  const yearSel=document.getElementById('pick-year');
+  const selectedYear=yearSel?parseInt(yearSel.value):now.getFullYear();
+  monthSel.innerHTML='';
+  const maxMonth=selectedYear===now.getFullYear()?now.getMonth():11;
+  for(let m=0;m<=maxMonth;m++){
+    const o=document.createElement('option');
+    o.value=m+1;o.textContent=months[m];
+    monthSel.appendChild(o);
+  }
+  // Default to current month if current year
+  if(selectedYear===now.getFullYear())monthSel.value=now.getMonth()+1;
+  updateDayOptions();
+}
+
+function updateDayOptions(){
+  const yearSel=document.getElementById('pick-year');
+  const monthSel=document.getElementById('pick-month');
+  const daySel=document.getElementById('pick-day');
+  if(!yearSel||!monthSel||!daySel)return;
+  const year=parseInt(yearSel.value);
+  const month=parseInt(monthSel.value);
+  const now=new Date();
+  const daysInMonth=new Date(year,month,0).getDate();
+  const maxDay=(year===now.getFullYear()&&month===now.getMonth()+1)?now.getDate():daysInMonth;
+  daySel.innerHTML='';
+  for(let d=1;d<=maxDay;d++){
+    const o=document.createElement('option');
+    o.value=d;o.textContent=String(d).padStart(2,'0');
+    daySel.appendChild(o);
+  }
+  // Default to today
+  if(year===now.getFullYear()&&month===now.getMonth()+1)daySel.value=now.getDate();
+}
+
+// Initialize dropdowns on page load
+window.addEventListener('DOMContentLoaded',()=>{
+  if(document.getElementById('pick-year'))populateYears();
+});
+setTimeout(()=>{if(document.getElementById('pick-year'))populateYears();},100);
+
+async function autoLoadDate(){
+  const yearSel=document.getElementById('pick-year');
+  const monthSel=document.getElementById('pick-month');
+  const daySel=document.getElementById('pick-day');
   const status=document.getElementById('load-status');
-  const btns=document.querySelectorAll('.auto-btn');
-  btns.forEach(b=>b.disabled=true);
+  const btn=document.querySelector('.auto-btn');
+  if(!yearSel||!monthSel||!daySel)return;
+  const year=parseInt(yearSel.value);
+  const month=String(monthSel.value).padStart(2,'0');
+  const day=String(daySel.value).padStart(2,'0');
+  const yy=String(year).slice(2);
+  const dateStr=`${yy}${month}${day}`;
+  if(btn)btn.disabled=true;
   if(status)status.textContent='Loading puzzle...';
   try{
-    const res=await fetch(`/.netlify/functions/fetch-puzzle?source=${source}`);
+    const res=await fetch(`/.netlify/functions/fetch-puzzle?source=${currentSource}&date=${dateStr}`);
     if(!res.ok)throw new Error('Server error '+res.status);
     const json=await res.json();
     if(json.error)throw new Error(json.error);
-    // Convert base64 back to Uint8Array
     const binary=atob(json.data);
     const u8=new Uint8Array(binary.length);
     for(let i=0;i<binary.length;i++)u8[i]=binary.charCodeAt(i);
     parsePuz(u8);
   }catch(err){
-    if(status)status.textContent='Could not load puzzle: '+err.message;
-    btns.forEach(b=>b.disabled=false);
+    if(status)status.textContent='Could not load — try a different date. ('+err.message+')';
+    if(btn)btn.disabled=false;
   }
 }
 
