@@ -1,19 +1,31 @@
 exports.handler = async function(event, context) {
   const source = event.queryStringParameters?.source || 'wsj';
 
-  // Multiple URL candidates per source in case one is down
+  const now = new Date();
+  const yy = String(now.getFullYear()).slice(2);
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const dateStr = `${yy}${mm}${dd}`;
+
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yy2 = String(yesterday.getFullYear()).slice(2);
+  const mm2 = String(yesterday.getMonth() + 1).padStart(2, '0');
+  const dd2 = String(yesterday.getDate()).padStart(2, '0');
+  const dateStr2 = `${yy2}${mm2}${dd2}`;
+
   const sources = {
     wsj: [
-      'https://herbach.dnsalias.com/wsj/wsj.puz',
-      'https://www.fleetingimage.com/wij/xyzzy/wsj.puz',
+      `https://herbach.dnsalias.com/wsj/wsj${dateStr}.puz`,
+      `https://herbach.dnsalias.com/wsj/wsj${dateStr2}.puz`,
     ],
     universal: [
-      'https://herbach.dnsalias.com/Uni/uni.puz',
-      'https://www.fleetingimage.com/wij/xyzzy/uni.puz',
+      `https://herbach.dnsalias.com/Uni/uni${dateStr}.puz`,
+      `https://herbach.dnsalias.com/Uni/uni${dateStr2}.puz`,
     ],
     jonesin: [
-      'https://herbach.dnsalias.com/Jonesin/jonesin.puz',
-      'https://www.fleetingimage.com/wij/xyzzy/jonesin.puz',
+      `https://herbach.dnsalias.com/Jonesin/jz${dateStr}.puz`,
+      `https://herbach.dnsalias.com/Jonesin/jz${dateStr2}.puz`,
     ],
   };
 
