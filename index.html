@@ -282,6 +282,7 @@ function buildUI(){
           <div class="clue-text" id="act-text">Select a clue to begin</div>
           <button class="submit-btn" id="sub-btn" onclick="submitAnswer()" disabled>Submit answer</button>
           <button class="pass-btn" onclick="passTurn()">Pass turn</button>
+          <button class="pass-btn" id="open-q-btn" onclick="openNewQuadrant()" style="margin-top:6px;border-color:#c00;color:#c00;" title="Both players agree to unlock the next adjacent quadrant">Open new quadrant</button>
         </div>
         <div class="open-clues-box">
           <div class="oc-label">Open clues</div>
@@ -626,6 +627,50 @@ function passTurn(){
   addLog(G.currentPlayer,null,0,0,null);
   advanceTurn();
   renderGrid();renderSidebar();updateTurnUI();
+}
+
+function openNewQuadrant(){
+  if(G.gameOver)return;
+  const qCols=G.puzzle.qCols||4;
+  const qRows=G.puzzle.qRows||4;
+  const totalQ=qRows*qCols;
+  // Find all locked quadrants adjacent to open ones
+  const candidates=[];
+  for(let q=0;q<totalQ;q++){
+    if(!G.openQuadrants.has(q)&&isAdjacentToOpen(q)){
+      // Check it has at least one white cell
+      const hasCells=Object.entries(G.quadrantMap).some(([k,v])=>v===q);
+      if(hasCells)candidates.push(q);
+    }
+  }
+  if(!candidates.length){
+    // No adjacent locked quadrant — find any remaining locked quadrant
+    for(let q=0;q<totalQ;q++){
+      if(!G.openQuadrants.has(q)){
+        const hasCells=Object.entries(G.quadrantMap).some(([k,v])=>v===q);
+        if(hasCells)candidates.push(q);
+      }
+    }
+  }
+  if(!candidates.length){
+    alert('All quadrants are already open!');
+    return;
+  }
+  // Open the first adjacent candidate (top-left-most)
+  const toOpen=candidates[0];
+  G.openQuadrants.add(toOpen);
+  // Log it
+  const row=Math.floor(toOpen/qCols)+1;
+  const col=toOpen%qCols+1;
+  G.log.unshift(`<span style="color:#888">Both players opened quadrant (row ${row}, col ${col})</span>`);
+  const el=document.getElementById('game-log');
+  if(el)el.innerHTML=G.log.slice(0,15).map(l=>`<div class="log-item">${l}</div>`).join('');
+  playSound('unlock');
+  renderGrid();
+  renderSidebar();
+  // Update active clue to first open clue
+  const remain=getOpenClues();
+  if(remain.length&&!G.activeKey)G.activeKey=remain[0];
 }
 
 function advanceTurn(){
